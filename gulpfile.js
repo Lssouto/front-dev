@@ -9,6 +9,7 @@ const gulp = require('gulp'),
       config = require('./gulpfile-config');
       
 let dev = true;
+let exportOption = false;
 
 gulp.task('styles', () => {
   return gulp.src(config.paths.app.scss + '/*.scss')
@@ -69,13 +70,14 @@ gulp.task('html', ['styles', 'scripts', 'vendor-scripts', 'vendor-styles'], () =
 gulp.task('images', () => {
   return gulp.src(config.paths.app.images + '/**/*')
     .pipe($.cache($.imagemin()))
-    .pipe(gulp.dest(config.paths.dist.images));
+    .pipe($.if(exportOption, gulp.dest(config.paths.export.images), gulp.dest(config.paths.dist.images)));
 });
 
 gulp.task('fonts', () => {
   return gulp.src(assets.fonts.map((index)=>{
       return index + '**/*.{eot,svg,ttf,woff,woff2}'
-  })).pipe($.if(dev, gulp.dest(config.paths.tmp.fonts), gulp.dest(config.paths.dist.fonts)));
+  }))
+  .pipe($.if(dev, gulp.dest(config.paths.tmp.fonts), gulp.dest(config.paths.dist.fonts)));
 });
 
 gulp.task('extras', () => {
@@ -105,7 +107,27 @@ gulp.task('vendor-scripts', ()=>{
     ));
 });
 
-gulp.task('clean', del.bind(null, [config.paths.tmp.base, config.paths.dist.base]));
+gulp.task('split', ()=>{
+    gulp.src(config.paths.app.base + '/*.html')
+    .pipe($.htmlsplit())
+    .pipe(gulp.dest(config.paths.export.html));
+});
+
+gulp.task('export-files', ['vendor-styles', 'vendor-scripts', 'fonts', 'styles' ,'images'], ()=>{
+  return gulp.src([
+    config.paths.app.base + '/**/*.*',
+    config.paths.tmp.base + '/**/*.*'
+  ])
+  .pipe($.rename({dirname: ''}))
+  .pipe($.if(/\.css$/,gulp.dest(config.paths.export.css)))
+  .pipe($.if(/\.scss$/,gulp.dest(config.paths.export.scss)))
+  .pipe($.if(/\.js$/,gulp.dest(config.paths.export.js)))
+  .pipe($.if(/\.(eot|svg|ttf|woff|woff2){1}$/,gulp.dest(config.paths.export.fonts)));
+});
+
+
+
+gulp.task('clean', del.bind(null, [config.paths.tmp.base, config.paths.dist.base, config.paths.export.base]));
 
 gulp.task('serve', () => {
   runSequence(['clean'], ['styles', 'scripts', 'fonts', 'vendor-scripts', 'vendor-styles'], () => {
@@ -141,6 +163,13 @@ gulp.task('serve:dist', ['default'], () => {
 
 gulp.task('build', ['lint', 'html', 'images', 'fonts', 'extras'], () => {
   return gulp.src(config.paths.dist.base + '/**/*').pipe($.size({title: 'build', gzip: true}));
+});
+
+gulp.task('export',  ()=>{
+  return new Promise(resolve => {
+    exportOption = true;
+    runSequence(['clean'], [ 'split', 'vendor-scripts', 'vendor-styles', 'export-files'] , resolve);
+  });
 });
 
 gulp.task('default', () => {

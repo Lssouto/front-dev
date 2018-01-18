@@ -6,7 +6,7 @@ module.exports = {
             fonts: 'app/fonts',
             js: 'app/scripts',
             scss: 'app/styles',
-            images: 'dist/images'
+            images: 'app/images'
         },
         tmp: {
             base: '.tmp',
@@ -20,6 +20,15 @@ module.exports = {
             js: 'dist/scripts',
             css: 'dist/styles',
             images: 'dist/images'
-    	}
+    	},
+        export: {
+            base: 'export',
+            fonts: 'export/fonts',
+            js: 'export/scripts',
+            css: 'export/styles/css',
+            scss:  'export/styles/scss',
+            html: 'export/views',
+            images: 'export/images',
+        },
     }
 };
