@@ -48,7 +48,7 @@ gulp.task('lint', () => {
     .pipe(gulp.dest(config.paths.app.js +''));
 });
 
-gulp.task('html', ['styles', 'scripts', 'vendor-js', 'vendor-css'], () => {
+gulp.task('html', ['styles', 'scripts', 'vendor-scripts', 'vendor-styles'], () => {
   return gulp.src(config.paths.app.html + '/*.html')
     .pipe($.useref({searchPath: [config.paths.tmp.base, config.paths.app.base, '.']}))
     .pipe($.if(/\.js$/, $.uglify({compress: {drop_console: true}})))
@@ -73,8 +73,8 @@ gulp.task('images', () => {
 });
 
 gulp.task('fonts', () => {
-  return gulp.src(assets.fonts.map((pos)=>{
-      return pos + '**/*.{eot,svg,ttf,woff,woff2}'
+  return gulp.src(assets.fonts.map((index)=>{
+      return index + '**/*.{eot,svg,ttf,woff,woff2}'
   })).pipe($.if(dev, gulp.dest(config.paths.tmp.fonts), gulp.dest(config.paths.dist.fonts)));
 });
 
@@ -87,25 +87,28 @@ gulp.task('extras', () => {
   }).pipe(gulp.dest(config.paths.dist.base));
 });
 
-gulp.task('vendor-css',()=>{
+gulp.task('vendor-styles',()=>{
   return gulp.src(assets.css)
     .pipe($.plumber())
     .pipe($.concat('vendor.css'))
-   .pipe($.if(dev, gulp.dest(config.paths.tmp.css), gulp.dest(config.paths.dist.css)));
+    .pipe($.if(!dev,$.cssnano({safe: true, autoprefixer: false})))
+    .pipe($.if(dev, gulp.dest(config.paths.tmp.css),gulp.dest(config.paths.dist.css)
+    ));
 });
 
-gulp.task('vendor-js', ()=>{
+gulp.task('vendor-scripts', ()=>{
   return gulp.src(assets.js)
     .pipe($.plumber())
     .pipe($.concat('vendor.js'))
-    .pipe($.if(dev, gulp.dest(config.paths.tmp.js), gulp.dest(config.paths.dist.js)));
+    .pipe($.if(!dev,$.uglify({compress: {drop_console: true}})))
+    .pipe($.if(dev, gulp.dest(config.paths.tmp.js), gulp.dest(config.paths.dist.js)
+    ));
 });
-
 
 gulp.task('clean', del.bind(null, [config.paths.tmp.base, config.paths.dist.base]));
 
 gulp.task('serve', () => {
-  runSequence(['clean'], ['styles', 'scripts', 'fonts', 'vendor-js', 'vendor-css'], () => {
+  runSequence(['clean'], ['styles', 'scripts', 'fonts', 'vendor-scripts', 'vendor-styles'], () => {
     browserSync.init({
       notify: false,
       port: 9000,
