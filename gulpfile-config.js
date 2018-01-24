@@ -30,5 +30,11 @@ module.exports = {
             html: 'export/views',
             images: 'export/images',
         },
+    },
+    options: {
+        export: {
+            fileOld: 'html', //without dot
+            fileNew: '.blade.php' 
+        }
     }
 };

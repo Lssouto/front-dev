@@ -125,6 +125,23 @@ gulp.task('export-files', ['vendor-styles', 'vendor-scripts', 'fonts', 'styles' 
   .pipe($.if(/\.(eot|svg|ttf|woff|woff2){1}$/,gulp.dest(config.paths.export.fonts)));
 });
 
+gulp.task('html-extension', ()=>{
+  let fileOld = config.options.export.fileOld
+  let regExp = new RegExp('(<!--)\\s+(split)\\s+.+\\.('+fileOld+')\\s+(-->)','g')
+  return gulp
+  .src(config.paths.app.base + '/*.html')
+  .pipe($.modifyFile((content, path, file) => {
+    while( match = regExp.exec(content)) {
+      content = content.replace(match[0], 
+        match[0].replace('.'+ fileOld,
+          config.options.export.fileNew
+        )
+      )
+    }
+    return content
+  }))
+  .pipe(gulp.dest(config.paths.app.base))
+});
 
 
 gulp.task('clean', del.bind(null, [config.paths.tmp.base, config.paths.dist.base, config.paths.export.base]));
@@ -168,7 +185,7 @@ gulp.task('build', ['lint', 'html', 'images', 'fonts', 'extras'], () => {
 gulp.task('export',  ()=>{
   return new Promise(resolve => {
     exportOption = true;
-    runSequence(['clean'], [ 'split', 'vendor-scripts', 'vendor-styles', 'export-files'] , resolve);
+    runSequence(['clean'], ['html-extension'],[ 'split', 'vendor-scripts', 'vendor-styles', 'export-files'] , resolve);
   });
 });
 
