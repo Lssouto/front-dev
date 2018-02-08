@@ -3,4 +3,5 @@ dist
 .tmp
 yarn.lock
 yarn-error.log
+npm-debug.log
 export

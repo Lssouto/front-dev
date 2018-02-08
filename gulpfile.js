@@ -1,3 +1,4 @@
+//Imports
 const gulp = require('gulp'),
       gulpLoadPlugins = require('gulp-load-plugins'),
       browserSync = require('browser-sync').create(),
@@ -7,33 +8,34 @@ const gulp = require('gulp'),
       reload = browserSync.reload,
       assets = require('./assets'),
       config = require('./gulpfile-config');
-      
-let dev = true;
+//State - Dev, Build, Export
+let globalState = null;
 
+//Sub-Tasks
 gulp.task('styles', () => {
   return gulp.src(config.paths.app.scss + '/**/*.scss')
     .pipe($.plumber())
-    .pipe($.if(gulpRunConfig.status == "dev", $.sourcemaps.init()))
+    .pipe($.if(globalState.state == "dev", $.sourcemaps.init()))
     .pipe($.sass.sync({
       outputStyle: 'expanded',
       precision: 10,
       includePaths: ['.']
     }).on('error', $.sass.logError))
     .pipe($.autoprefixer({browsers: ['> 1%', 'last 2 versions', 'Firefox ESR']}))
-    .pipe($.if(gulpRunConfig.status == "dev", $.sourcemaps.write()))
-    .pipe($.if(gulpRunConfig.minify, $.cssnano({safe: true, autoprefixer: false})))
-    .pipe(gulp.dest(gulpRunConfig.dest.css))
+    .pipe($.if(globalState.state == "dev", $.sourcemaps.write()))
+    .pipe($.if(globalState.minify, $.cssnano({safe: true, autoprefixer: false})))
+    .pipe(gulp.dest(globalState.dest.css))
     .pipe(reload({stream: true}));
 });
 
 gulp.task('scripts', () => {
   return gulp.src(config.paths.app.js +'/**/*.js')
     .pipe($.plumber())
-    .pipe($.if(gulpRunConfig.status == "dev", $.sourcemaps.init()))
+    .pipe($.if(globalState.state == "dev", $.sourcemaps.init()))
     .pipe($.babel())
-    .pipe($.if(gulpRunConfig.status == "dev", $.sourcemaps.write('.')))
-    .pipe($.if(gulpRunConfig.minify, $.uglify({compress: {drop_console: true}})))
-    .pipe(gulp.dest(gulpRunConfig.dest.js))
+    .pipe($.if(globalState.state == "dev", $.sourcemaps.write('.')))
+    .pipe($.if(globalState.minify, $.uglify({compress: {drop_console: true}})))
+    .pipe(gulp.dest(globalState.dest.js))
     .pipe(reload({stream: true}));
 });
 
@@ -50,10 +52,8 @@ gulp.task('lint', () => {
     .pipe(gulp.dest(config.paths.app.js +''));
 });
 
-//gulp.task('html', ['styles', 'scripts', 'vendor-scripts', 'vendor-styles'], () => {
 gulp.task('html', () => {
   return gulp.src(config.paths.app.html + '/*.html')
-    .pipe($.useref({searchPath: [config.paths.tmp.base, config.paths.app.base, '.']}))
     .pipe($.if(/\.html$/, $.htmlmin({
       collapseWhitespace: true,
       minifyCSS: true,
@@ -64,14 +64,14 @@ gulp.task('html', () => {
       removeScriptTypeAttributes: true,
       removeStyleLinkTypeAttributes: true
     })))
-    .pipe(gulp.dest(gulpRunConfig.dest.base))
+    .pipe(gulp.dest(globalState.dest.base))
     .pipe(reload({stream: true}));
 });
 
 gulp.task('images', () => {
   return gulp.src(config.paths.app.images + '/**/*')
     .pipe($.cache($.imagemin()))
-    .pipe(gulp.dest(gulpRunConfig.dest.images))
+    .pipe(gulp.dest(globalState.dest.images))
     .pipe(reload({stream: true}));
 });
 
@@ -79,7 +79,7 @@ gulp.task('fonts', () => {
   return gulp.src(assets.fonts.map((index)=>{
       return index + '**/*.{eot,svg,ttf,woff,woff2}'
   }))
-  .pipe(gulp.dest(gulpRunConfig.dest.fonts))
+  .pipe(gulp.dest(globalState.dest.fonts))
   .pipe(reload({stream: true}));
 });
 
@@ -90,41 +90,23 @@ gulp.task('extras', () => {
   ], {
     dot: true
   })
-  .pipe(gulp.dest(gulpRunConfig.dest.base));
-});
-
-gulp.task('vendor-styles',()=>{
-  return gulp.src(assets.css)
-    .pipe($.plumber())
-    .pipe($.concat('vendor.css'))
-    .pipe($.if(gulpRunConfig !== "dev",$.cssnano({safe: true, autoprefixer: false})))
-    .pipe(gulp.dest(gulpRunConfig.dest.css));
-});
-
-gulp.task('vendor-scripts', ()=>{
-  return gulp.src(assets.js)
-    .pipe($.plumber())
-    .pipe($.concat('vendor.js'))
-    .pipe($.if(gulpRunConfig !== "dev",$.uglify({compress: {drop_console: true}})))
-    .pipe(gulp.dest(gulpRunConfig.dest.js));
+  .pipe(gulp.dest(globalState.dest.base));
 });
 
 gulp.task('split', ()=>{
     gulp.src(config.paths.app.base + '/*.html')
     .pipe($.htmlsplit())
-    .pipe(gulp.dest(gulpRunConfig.dest.html));
-});
-
-gulp.task('export-files', ['vendor-styles', 'vendor-scripts', 'fonts', 'styles' ,'images','scripts'], ()=>{
-  return gulp.src([
-    config.paths.app.base + '/**/*.*',
-    config.paths.tmp.base + '/**/*.*'
-  ])
-  .pipe($.rename({dirname: ''}))
-  .pipe($.if(/\.css$/,gulp.dest(gulpRunConfig.dest.css)))
-  .pipe($.if(/\.scss$/,gulp.dest(gulpRunConfig.dest.scss)))
-  .pipe($.if(/\.js$/,gulp.dest(gulpRunConfig.dest.js)))
-  .pipe($.if(/\.(eot|svg|ttf|woff|woff2){1}$/,gulp.dest(gulpRunConfig.dest.fonts)));
+    .pipe($.if(globalState.minify, $.htmlmin({
+      collapseWhitespace: true,
+      minifyCSS: true,
+      minifyJS: {compress: {drop_console: true}},
+      processConditionalComments: true,
+      removeComments: true,
+      removeEmptyAttributes: true,
+      removeScriptTypeAttributes: true,
+      removeStyleLinkTypeAttributes: true
+    })))
+    .pipe(gulp.dest(globalState.dest.html));
 });
 
 gulp.task('html-extension', ()=>{
@@ -145,11 +127,29 @@ gulp.task('html-extension', ()=>{
   .pipe(gulp.dest(config.paths.app.base))
 });
 
-
 gulp.task('clean', del.bind(null, [config.paths.tmp.base, config.paths.dist.base, config.paths.export.base]));
 
+//Vendor Builds
+gulp.task('vendor-styles',()=>{
+  return gulp.src(assets.css)
+    .pipe($.plumber())
+    .pipe($.concat('vendor.css'))
+    .pipe($.if(globalState !== "dev",$.cssnano({safe: true, autoprefixer: false})))
+    .pipe(gulp.dest(globalState.dest.css));
+});
+
+gulp.task('vendor-scripts', ()=>{
+  return gulp.src(assets.js)
+    .pipe($.plumber())
+    .pipe($.concat('vendor.js'))
+    .pipe($.if(globalState !== "dev",$.uglify({compress: {drop_console: true}})))
+    .pipe(gulp.dest(globalState.dest.js));
+});
+
+//Serve tasks
 gulp.task('serve:dev', () => {
-  changeState('dev',false)
+
+  globalState = config.gulpPutState.put('dev',false)
   runSequence(['clean'], ['styles', 'scripts', 'fonts', 'vendor-scripts', 'vendor-styles'], () => {
     browserSync.init({
       notify: false,
@@ -171,137 +171,73 @@ gulp.task('serve:dev', () => {
   });
 });
 
-gulp.task('serve:export', () => {
-  changeState('export',false)
-  runSequence(['export'], () => {
+gulp.task('serve:export', ['export'], () => {
 
-    gulp.watch(config.paths.tmp.fonts + '/**/*', ['fonts']);
-    gulp.watch(config.paths.app.images + '/**/*', ['images']);
-    gulp.watch(config.paths.app.base + '/*.html', ['html']);
-    gulp.watch(config.paths.app.scss + '/**/*.scss', ['styles']);
-    gulp.watch(config.paths.app.js +'/**/*.js', ['scripts']);
-    gulp.watch(config.paths.app.fonts  + '/**/*', ['fonts']);
-  });
+  gulp.watch(config.paths.app.images + '/**/*', ['images']);
+  gulp.watch(config.paths.app.base + '/*.html', ['split']);
+  gulp.watch(config.paths.app.scss + '/**/*.scss', ['styles']);
+  gulp.watch(config.paths.app.js +'/**/*.js', ['scripts']);
+  gulp.watch(config.paths.app.fonts  + '/**/*', ['fonts']);
+
 });
 
-gulp.task('serve:export-min', () => {
-  changeState('export',true)
-  runSequence(['export'], () => {
+gulp.task('serve:export-min', ['export-min'], () => {
 
-    gulp.watch(config.paths.tmp.fonts + '/**/*', ['fonts']);
-    gulp.watch(config.paths.app.images + '/**/*', ['images']);
-    gulp.watch(config.paths.app.base + '/*.html', ['html']);
-    gulp.watch(config.paths.app.scss + '/**/*.scss', ['styles']);
-    gulp.watch(config.paths.app.js +'/**/*.js', ['scripts']);
-    gulp.watch(config.paths.app.fonts  + '/**/*', ['fonts']);
-  });
+  gulp.watch(config.paths.app.images + '/**/*', ['images']);
+  gulp.watch(config.paths.app.base + '/*.html', ['split']);
+  gulp.watch(config.paths.app.scss + '/**/*.scss', ['styles']);
+  gulp.watch(config.paths.app.js +'/**/*.js', ['scripts']);
+  gulp.watch(config.paths.app.fonts  + '/**/*', ['fonts']);
+
 });
 
-gulp.task('serve:build', () => {
-  changeState('build',true)
-  runSequence(['build'], () => {
-    browserSync.init({
-      notify: false,
-      port: 9000,
-      server: {
-        baseDir: [gulpRunConfig.dest.base],
-      }
-    });
-
-    gulp.watch(config.paths.tmp.fonts + '/**/*', ['fonts']);
-    gulp.watch(config.paths.app.images + '/**/*', ['images']);
-    gulp.watch(config.paths.app.base + '/*.html', ['html']);
-    gulp.watch(config.paths.app.scss + '/**/*.scss', ['styles']);
-    gulp.watch(config.paths.app.js +'/**/*.js', ['scripts']);
-    gulp.watch(config.paths.app.fonts  + '/**/*', ['fonts']);
-  });
-});
-
-gulp.task('serve:dist', ['default'], () => {
+gulp.task('serve:build', ['build'], () => {
   browserSync.init({
     notify: false,
     port: 9000,
     server: {
-      baseDir: [config.paths.dist.base]
+      baseDir: [globalState.dest.base],
     }
   });
+
+  gulp.watch(config.paths.tmp.fonts + '/**/*', ['fonts']);
+  gulp.watch(config.paths.app.images + '/**/*', ['images']);
+  gulp.watch(config.paths.app.base + '/*.html', ['html']);
+  gulp.watch(config.paths.app.scss + '/**/*.scss', ['styles']);
+  gulp.watch(config.paths.app.js +'/**/*.js', ['scripts']);
+  gulp.watch(config.paths.app.fonts  + '/**/*', ['fonts']);
 });
 
+//Main Tags
 gulp.task('build', () => {
-  runSequence(['lint', 'images', 'fonts', 'extras', 'styles', 'scripts', 'vendor-scripts', 'vendor-styles'], ['html'])
-  dev = false;
+  globalState =  config.gulpPutState.put('build',true)
+  runSequence(['lint', 'images', 'fonts', 'extras', 'vendor-scripts', 'vendor-styles' ,'styles', 'scripts', 'html'])
   return gulp.src(config.paths.dist.base + '/**/*').pipe($.size({title: 'build', gzip: true}));
 });
 
 gulp.task('export',  ()=>{
   return new Promise(resolve => {
-    changeState('export',false)
-    runSequence(['clean'], ['html-extension'],[ 'split', 'export-files'] , resolve);
+    globalState = config.gulpPutState.put('export',false)
+    runSequence(['clean'], ['html-extension'],['lint', 'images', 'fonts', 'extras', 'vendor-scripts', 'vendor-styles' ,'styles', 'scripts'],['split'] , resolve);
   });
 });
 
 gulp.task('export-min',  ()=>{
   return new Promise(resolve => {
-    changeState('export',true)
-    runSequence(['clean'], ['html-extension'],[ 'split', 'export-files'] , resolve);
+    globalState = config.gulpPutState.put('export',true)
+    runSequence(['clean'], ['html-extension'],['lint', 'images', 'fonts', 'extras', 'vendor-scripts', 'vendor-styles' ,'styles', 'scripts'],['split'] , resolve);
   });
 });
 
 gulp.task('default', () => {
-  return new Promise(resolve => {
-    changeState('build',true)
-    runSequence(['clean'], 'build', resolve);
-  });
+    console.log('\n\n o/ Welcome, I will help you!'+
+                '\n Type "gulp serve:dev" or "gulp serve:build"'+
+                '\n\n --serve:dev: will just create a simple server with reload and file watching'+
+                '\n --serve:build: will create a repo to minify and transfer the files so u can upload or sendo to someone'+
+                '\n\n if you have something like an ready structure you can type "gulp serve:export" or "serve:export-min"'+
+                '\n it will export all the files to where you configured on gulpfile-config.js '+
+                '\n\n ^.^, you still can just type "gulp build", "gulp export", or "gulp export-min" if you want to run without the watch option. \n\n'
+      )
 });
 
-let gulpRunConfig = {
-  state: '', //dev,build,export
-  minify: false,
-  dest : {
 
-  }
-}
-
-function changeState(state,min){
-  gulpRunConfig.state = state;
-  gulpRunConfig.minify = min;
-
-  switch (state){
-
-    case "export":
-    gulpRunConfig.dest = config.paths.export;
-    break;
-
-    case "build":
-    gulpRunConfig.dest = config.paths.dist;
-    break;
-
-    default:
-    gulpRunConfig.dest = config.paths.tmp;
-    break;
-
-  }
-  //console.log(gulpRunConfig)
-}
-
-gulp.task('watch',function(){
-  runSequence(['clean'], ['styles', 'scripts', 'fonts', 'vendor-scripts', 'vendor-styles'], () => {
-    browserSync.init({
-      notify: false,
-      port: 9000,
-      server: {
-        baseDir: [config.paths.tmp.base, config.paths.app.base],
-      }
-    });
-
-    gulp.watch([
-      'app/*.html',
-      'app/images/**/*',
-      '.tmp/fonts/**/*'
-    ]).on('change', reload);
-
-    gulp.watch(config.paths.app.scss + '/**/*.scss', ['styles']);
-    gulp.watch(config.paths.app.js +'/**/*.js', ['scripts']);
-    gulp.watch('app/fonts/**/*', ['fonts']);
-  });
-});
