@@ -70,7 +70,7 @@ gulp.task('html', () => {
 
 gulp.task('images', () => {
   return gulp.src(config.paths.app.images + '/**/*')
-    .pipe($.cache($.imagemin()))
+    .pipe($.if(globalState.minify,$.cache($.imagemin())))
     .pipe(gulp.dest(globalState.dest.images))
     .pipe(reload({stream: true}));
 });
@@ -145,7 +145,13 @@ gulp.task('vendor-scripts', ()=>{
     .pipe($.if(globalState !== "dev",$.uglify({compress: {drop_console: true}})))
     .pipe(gulp.dest(globalState.dest.js));
 });
-
+gulp.task('scss-export', ()=>{
+  return gulp.src([
+    config.paths.app.scss + '/**/*'
+  ])
+  .pipe($.rename({dirname: ''}))
+  .pipe($.if(/\.scss$/,gulp.dest(globalState.dest.scss)));
+})
 //Serve tasks
 gulp.task('serve:dev', () => {
 
@@ -185,7 +191,7 @@ gulp.task('serve:export-min', ['export-min'], () => {
 
   gulp.watch(config.paths.app.images + '/**/*', ['images']);
   gulp.watch(config.paths.app.base + '/*.html', ['split']);
-  gulp.watch(config.paths.app.scss + '/**/*.scss', ['styles']);
+  gulp.watch(config.paths.app.scss + '/**/*.scss', ['styles', 'scss-export']);
   gulp.watch(config.paths.app.js +'/**/*.js', ['scripts']);
   gulp.watch(config.paths.app.fonts  + '/**/*', ['fonts']);
 
@@ -218,14 +224,14 @@ gulp.task('build', () => {
 gulp.task('export',  ()=>{
   return new Promise(resolve => {
     globalState = config.gulpPutState.put('export',false)
-    runSequence(['clean'], ['html-extension'],['lint', 'images', 'fonts', 'extras', 'vendor-scripts', 'vendor-styles' ,'styles', 'scripts'],['split'] , resolve);
+    runSequence( ['html-extension'],['lint', 'images', 'fonts', 'extras', 'vendor-scripts', 'vendor-styles' ,'styles', 'scripts', 'scss-export' ],['split'] , resolve);
   });
 });
 
 gulp.task('export-min',  ()=>{
   return new Promise(resolve => {
     globalState = config.gulpPutState.put('export',true)
-    runSequence(['clean'], ['html-extension'],['lint', 'images', 'fonts', 'extras', 'vendor-scripts', 'vendor-styles' ,'styles', 'scripts'],['split'] , resolve);
+    runSequence( ['html-extension'],['lint', 'images', 'fonts', 'extras', 'vendor-scripts', 'vendor-styles' ,'styles', 'scripts'],['split'] , resolve);
   });
 });
 
