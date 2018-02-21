@@ -127,7 +127,7 @@ gulp.task('html-extension', ()=>{
   .pipe(gulp.dest(config.paths.app.base))
 });
 
-gulp.task('clean', del.bind(null, [config.paths.tmp.base, config.paths.dist.base, config.paths.export.base]));
+gulp.task('clean', del.bind(null, [config.paths.tmp.base, config.paths.dist.base]));
 
 //Vendor Builds
 gulp.task('vendor-styles',()=>{
@@ -146,9 +146,7 @@ gulp.task('vendor-scripts', ()=>{
     .pipe(gulp.dest(globalState.dest.js));
 });
 gulp.task('scss-export', ()=>{
-  return gulp.src([
-    config.paths.app.scss + '/**/*'
-  ])
+  return gulp.src(config.paths.app.scss + '/**/*')
   .pipe($.rename({dirname: ''}))
   .pipe($.if(/\.scss$/,gulp.dest(globalState.dest.scss)));
 })
