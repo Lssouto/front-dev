@@ -147,8 +147,7 @@ gulp.task('vendor-scripts', ()=>{
 });
 gulp.task('scss-export', ()=>{
   return gulp.src(config.paths.app.scss + '/**/*')
-  .pipe($.rename({dirname: ''}))
-  .pipe($.if(/\.scss$/,gulp.dest(globalState.dest.scss)));
+  .pipe(gulp.dest(globalState.dest.scss));
 })
 //Serve tasks
 gulp.task('serve:dev', () => {
