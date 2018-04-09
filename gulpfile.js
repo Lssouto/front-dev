@@ -7,7 +7,12 @@ const gulp = require('gulp'),
       $ = gulpLoadPlugins(),
       reload = browserSync.reload,
       assets = require('./assets'),
-      config = require('./gulpfile-config');
+      config = require('./gulpfile-config'),
+      babelify = require('babelify'),
+      browserify = require('browserify'),
+      source = require('vinyl-source-stream'),
+      buffer = require('vinyl-buffer');
+
 //State - Dev, Build, Export
 let globalState = null;
 
@@ -29,8 +34,14 @@ gulp.task('styles', () => {
 });
 
 gulp.task('scripts', () => {
-  return gulp.src(config.paths.app.js +'/**/*.js')
-    .pipe($.plumber())
+  return browserify({
+      entries: config.paths.app.js +'/main.js',
+      debug: true
+    })
+    .transform(babelify)
+    .bundle()
+    .pipe(source('main.js'))
+    .pipe(buffer())  
     .pipe($.if(globalState.state == "dev", $.sourcemaps.init()))
     .pipe($.babel())
     .pipe($.if(globalState.state == "dev", $.sourcemaps.write('.')))
@@ -233,14 +244,13 @@ gulp.task('export-min',  ()=>{
 });
 
 gulp.task('default', () => {
-    console.log('\n\n o/ Welcome, I will help you!'+
-                '\n Type "gulp serve:dev" or "gulp serve:build"'+
-                '\n\n --serve:dev: will just create a simple server with reload and file watching'+
-                '\n --serve:build: will create a repo to minify and transfer the files so u can upload or sendo to someone'+
-                '\n\n if you have something like an ready structure you can type "gulp serve:export" or "serve:export-min"'+
-                '\n it will export all the files to where you configured on gulpfile-config.js '+
-                '\n\n ^.^, you still can just type "gulp build", "gulp export", or "gulp export-min" if you want to run without the watch option. \n\n'
-      )
+    console.log(
+      '\n\n o/ Welcome, I will help you!'+
+      '\n Type "gulp serve:dev" or "gulp serve:build"'+
+      '\n\n --serve:dev: will just create a simple server with reload and file watching'+
+      '\n --serve:build: will create a repo to minify and transfer the files so u can upload or sendo to someone'+
+      '\n\n if you have something like an ready structure you can type "gulp serve:export" or "serve:export-min"'+
+      '\n it will export all the files to where you configured on gulpfile-config.js '+
+      '\n\n ^.^, you still can just type "gulp build", "gulp export", or "gulp export-min" if you want to run without the watch option. \n\n'
+    )
 });
-
-
