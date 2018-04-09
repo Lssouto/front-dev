@@ -58,6 +58,7 @@ gulp serve:build
 ```
 
 -The first one will just minify everything and send to where it's configured on the gulfile-config.js.
+
 -The second will be like developing, but everything will be minified and everytime you make a change it will be minified and reloaded.
 
 ### Exporting to other structure
